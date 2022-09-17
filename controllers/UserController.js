@@ -42,6 +42,7 @@ module.exports = class UserController {
         const userExists = await User.findOne({ email: email })
         if (userExists) {
             res.status(422).json({ message: 'Usuário já possui cadastro no sistema' })
+            return
         }
 
         // create a password
