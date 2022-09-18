@@ -28,6 +28,11 @@ const createUserValidation = async (name, email, phone, password, confirmpasswor
         return message
     }
 
+    if(password.length < 9){
+        message = 'A senha deve ter no mínimo 8 caracteres'
+        return message
+    }
+
     //check if user exists
     const userExists = await User.findOne({ email: email })
     if (userExists) {
