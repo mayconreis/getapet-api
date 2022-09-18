@@ -6,42 +6,18 @@ const jwt = require('jsonwebtoken')
 // helpers
 const createUserToken = require('../helpers/create-user-token')
 const getToken = require('../helpers/get-token')
+const getUserByToken = require('../helpers/get-user-by-token')
+const createUserValidation = require('../helpers/create-user-validation')
+const editUserValidation = require('../helpers/edit-user-validation')
+
 
 module.exports = class UserController {
     static async register(req, res) {
         const { name, email, phone, password, confirmpassword } = req.body
 
-        // validations
-        if (!name) {
-            res.status(422).json({ message: 'O nome é obrigatorio' })
-            return
-        }
-        if (!email) {
-            res.status(422).json({ message: 'O email é obrigatorio' })
-            return
-        }
-        if (!phone) {
-            res.status(422).json({ message: 'O telefone é obrigatorio' })
-            return
-        }
-        if (!password) {
-            res.status(422).json({ message: 'A senha é obrigatoria' })
-            return
-        }
-        if (!confirmpassword) {
-            res.status(422).json({ message: 'A confirmação de senha é obrigatoria' })
-            return
-        }
-
-        if (password !== confirmpassword) {
-            res.status(422).json({ message: 'As senhas não são iguais' })
-            return
-        }
-
-        //check if user exists
-        const userExists = await User.findOne({ email: email })
-        if (userExists) {
-            res.status(422).json({ message: 'Usuário já possui cadastro no sistema' })
+        const returnValidation = await createUserValidation(name, email, phone, password, confirmpassword)
+        if (returnValidation) {
+            res.status(422).json({ message: returnValidation })
             return
         }
 
@@ -125,6 +101,50 @@ module.exports = class UserController {
     }
 
     static async editUser(req, res) {
-        res.status(200).json({ message: "Editado com sucesso" })
+
+        const id = req.params.id
+
+        const { name, email, phone, password, confirmpassword } = req.body
+        let image = ''
+
+        if (req.file) {
+            user.image = req.file.filename
+        }
+
+        const token = getToken(req)
+        console.log(token)
+
+        const user = await getUserByToken(token)
+        console.log(user)
+
+        const editValidation = await editUserValidation(token, user, name, email, phone, password, confirmpassword)
+        if (editValidation) {
+            res.status(422).json({ message: editValidation })
+        }
+        user.name = name
+        user.email = email
+        user.phone = phone
+
+        if (password && password === confirmpassword) {
+            // create a password
+            const salt = await bcrypt.genSalt(12)
+            const passwordHash = await bcrypt.hash(password, salt)
+
+            user.password = passwordHash
+            return
+        }
+
+        const updatedUser = await User.findOneAndUpdate(
+            { _id: user._id },
+            { $set: user },
+            { new: true }
+        )
+            .then(() => {
+                res.status(200).json({ message: 'Usuário atualizado com sucesso!' })
+            })
+            .catch((error) => {
+                res.status(500).json({ message: error })
+            })
+
     }
 }
